@@ -1,0 +1,82 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <Configurations>Debug;Release</Configurations>
+    <LangVersion>9</LangVersion>
+    <Version>1.0.0-alpha</Version>
+    <!-- AssemblyVersion/FileVersion are 4-part numeric fields; they cannot carry the prerelease suffix. -->
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <InformationalVersion>1.0.0-alpha</InformationalVersion>
+    <RootNamespace>JamThreshold</RootNamespace>
+    <AssemblyName>JamThreshold</AssemblyName>
+    <Title>Jam Threshold</Title>
+    <Authors>MafraCode</Authors>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <Description>Configurable stuck-jam despawn thresholds (replacement for StuckMovingObjectSystem).</Description>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+  </PropertyGroup>
+
+  <!-- Official CS2 IMod imports. CSII_TOOLPATH is the User env var set by the in-game Modding toolchain. Close the game before a Release build or the deployed DLL is locked. -->
+  <Import Project="$([System.Environment]::GetEnvironmentVariable('CSII_TOOLPATH', 'EnvironmentVariableTarget.User'))\Mod.props" />
+  <Import Project="$([System.Environment]::GetEnvironmentVariable('CSII_TOOLPATH', 'EnvironmentVariableTarget.User'))\Mod.targets" />
+
+  <ItemGroup>
+    <Reference Include="Game">
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Colossal.Core">
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Colossal.Logging">
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Colossal.IO.AssetDatabase">
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Colossal.Localization">
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.Burst">
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.Collections">
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.Entities">
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Colossal.Mathematics">
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.Mathematics">
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Update="System">
+      <Private>false</Private>
+    </Reference>
+    <Reference Update="System.Core">
+      <Private>false</Private>
+    </Reference>
+    <Reference Update="System.Data">
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="$(ModPropsFile)" Link="Properties\Mod.props" />
+    <None Include="$(ModTargetsFile)" Link="Properties\Mod.targets" />
+  </ItemGroup>
+
+  <Target Name="CopyLicense" AfterTargets="DeployWIP">
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)..\LICENSE" DestinationFiles="$(DeployDir)\LICENSE" />
+  </Target>
+
+</Project>
