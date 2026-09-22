@@ -1,5 +1,6 @@
 namespace JamThreshold
 {
+    using Colossal.Serialization.Entities;
     using Game;
     using Game.Common;
     using Game.Creatures;
@@ -11,11 +12,13 @@ namespace JamThreshold
     using Unity.Burst.Intrinsics;
     using Unity.Collections;
     using Unity.Entities;
+    using Unity.Jobs;
 
     /// <summary>
     /// Replacement for vanilla <see cref="StuckMovingObjectSystem"/>: same query, UpdateFrame
     /// scheduling, Crossing/RequestSpace side effect, and parked handling, but chain depth and
-    /// speed cutoff are job fields (vanilla hard-codes 100 and byte 6).
+    /// speed cutoff are job fields (vanilla hard-codes 100 and byte 6). Newly flagged objects are
+    /// also reported to <see cref="ClearanceStats"/> for the Options statistics lines.
     /// </summary>
     public partial class JamThresholdSystem : GameSystemBase
     {
@@ -29,6 +32,9 @@ namespace JamThreshold
             public int m_ChainDepth;
 
             public byte m_MaxStuckSpeed;
+
+            /// <summary>One <see cref="ClearedKind"/> slot per newly flagged object.</summary>
+            public NativeQueue<int>.ParallelWriter m_ClearedKinds;
 
             [ReadOnly]
             public EntityTypeHandle m_EntityType;
@@ -50,6 +56,55 @@ namespace JamThreshold
 
             [ReadOnly]
             public ComponentTypeHandle<Car> m_CarType;
+
+            // Statistics only: these decide which ClearedKind slot a chunk belongs to.
+            [ReadOnly]
+            public ComponentTypeHandle<Human> m_HumanType;
+
+            [ReadOnly]
+            public ComponentTypeHandle<Train> m_TrainType;
+
+            [ReadOnly]
+            public ComponentTypeHandle<Bicycle> m_BicycleType;
+
+            [ReadOnly]
+            public ComponentTypeHandle<Taxi> m_TaxiType;
+
+            [ReadOnly]
+            public ComponentTypeHandle<PublicTransport> m_PublicTransportType;
+
+            [ReadOnly]
+            public ComponentTypeHandle<PassengerTransport> m_PassengerTransportType;
+
+            [ReadOnly]
+            public ComponentTypeHandle<DeliveryTruck> m_DeliveryTruckType;
+
+            [ReadOnly]
+            public ComponentTypeHandle<GarbageTruck> m_GarbageTruckType;
+
+            [ReadOnly]
+            public ComponentTypeHandle<FireEngine> m_FireEngineType;
+
+            [ReadOnly]
+            public ComponentTypeHandle<PoliceCar> m_PoliceCarType;
+
+            [ReadOnly]
+            public ComponentTypeHandle<PostVan> m_PostVanType;
+
+            [ReadOnly]
+            public ComponentTypeHandle<Ambulance> m_AmbulanceType;
+
+            [ReadOnly]
+            public ComponentTypeHandle<Hearse> m_HearseType;
+
+            [ReadOnly]
+            public ComponentTypeHandle<MaintenanceVehicle> m_MaintenanceVehicleType;
+
+            [ReadOnly]
+            public ComponentTypeHandle<CargoTransport> m_CargoTransportType;
+
+            [ReadOnly]
+            public ComponentTypeHandle<PersonalCar> m_PersonalCarType;
 
             [ReadOnly]
             public ComponentLookup<Blocker> m_BlockerData;
@@ -87,6 +142,7 @@ namespace JamThreshold
                 NativeArray<PathOwner> nativeArray7 = chunk.GetNativeArray(ref m_PathOwnerType);
                 NativeArray<AnimalCurrentLane> nativeArray8 = chunk.GetNativeArray(ref m_AnimalCurrentLaneType);
                 bool flag = chunk.Has(ref m_CarType);
+                int clearedKind = ClassifyChunk(in chunk, flag);
                 for (int i = 0; i < nativeArray2.Length; i++)
                 {
                     Blocker blocker = nativeArray2[i];
@@ -175,17 +231,79 @@ namespace JamThreshold
                         PathOwner value = nativeArray7[i];
                         if ((value.m_State & PathFlags.Pending) == 0)
                         {
+                            // Count the transition only: a chain stays flagged across updates.
+                            bool wasStuck = (value.m_State & PathFlags.Stuck) != 0;
                             value.m_State |= PathFlags.Stuck;
                             nativeArray7[i] = value;
+                            if (!wasStuck && clearedKind >= 0)
+                            {
+                                m_ClearedKinds.Enqueue(clearedKind);
+                            }
                         }
                     }
                     else if (nativeArray8.Length != 0)
                     {
                         AnimalCurrentLane value2 = nativeArray8[i];
+                        bool wasStuck = (value2.m_Flags & CreatureLaneFlags.Stuck) != 0;
                         value2.m_Flags |= CreatureLaneFlags.Stuck;
                         nativeArray8[i] = value2;
+                        if (!wasStuck && clearedKind >= 0)
+                        {
+                            m_ClearedKinds.Enqueue(clearedKind);
+                        }
                     }
                 }
+            }
+
+            /// <summary>
+            /// Picks the <see cref="ClearedKind"/> slot for a whole chunk - entities in one chunk
+            /// share an archetype, so this costs one pass instead of one test per entity.
+            /// Returns -1 for riders, which are counted through the vehicle carrying them.
+            /// </summary>
+            private int ClassifyChunk(in ArchetypeChunk chunk, bool isCar)
+            {
+                if (chunk.Has(ref m_HumanType))
+                {
+                    return chunk.Has(ref m_CurrentVehicleType) ? -1 : (int)ClearedKind.Pedestrian;
+                }
+
+                if (chunk.Has(ref m_TrainType))
+                {
+                    return (int)ClearedKind.Train;
+                }
+
+                if (chunk.Has(ref m_BicycleType))
+                {
+                    return (int)ClearedKind.Bicycle;
+                }
+
+                if (chunk.Has(ref m_TaxiType)
+                    || chunk.Has(ref m_PublicTransportType)
+                    || chunk.Has(ref m_PassengerTransportType))
+                {
+                    return (int)ClearedKind.Transit;
+                }
+
+                if (chunk.Has(ref m_DeliveryTruckType)
+                    || chunk.Has(ref m_GarbageTruckType)
+                    || chunk.Has(ref m_FireEngineType)
+                    || chunk.Has(ref m_PoliceCarType)
+                    || chunk.Has(ref m_PostVanType)
+                    || chunk.Has(ref m_AmbulanceType)
+                    || chunk.Has(ref m_HearseType)
+                    || chunk.Has(ref m_MaintenanceVehicleType)
+                    || chunk.Has(ref m_CargoTransportType))
+                {
+                    return (int)ClearedKind.Truck;
+                }
+
+                if (chunk.Has(ref m_PersonalCarType) || isCar)
+                {
+                    return (int)ClearedKind.Car;
+                }
+
+                // Aircraft, watercraft, animals, and anything else with a Blocker.
+                return (int)ClearedKind.Other;
             }
 
             public bool IsBlocked(Entity entity, Blocker blocker)
@@ -280,6 +398,16 @@ namespace JamThreshold
 
         private EntityQuery m_ObjectQuery;
 
+        // Filled by the parallel job, drained on the main thread one update later.
+        private NativeQueue<int> m_ClearedKinds;
+
+        private JobHandle m_ClearedKindsHandle;
+
+        // Simulation frame the current statistics window started on.
+        private uint m_StartFrame;
+
+        private bool m_HasStartFrame;
+
         /// <summary>
         /// Exclusive ownership of stuck-check: at most one of vanilla or this replacement is on.
         /// Never disables vanilla unless this system already exists.
@@ -322,6 +450,7 @@ namespace JamThreshold
         protected override void OnCreate()
         {
             base.OnCreate();
+            m_ClearedKinds = new NativeQueue<int>(Allocator.Persistent);
             m_SimulationSystem = World.GetOrCreateSystemManaged<SimulationSystem>();
             m_ObjectQuery = GetEntityQuery(
                 ComponentType.ReadOnly<Blocker>(),
@@ -334,15 +463,65 @@ namespace JamThreshold
             ApplyOwnership(settings == null || settings.Enabled);
         }
 
+        protected override void OnDestroy()
+        {
+            m_ClearedKindsHandle.Complete();
+            if (m_ClearedKinds.IsCreated)
+            {
+                m_ClearedKinds.Dispose();
+            }
+
+            base.OnDestroy();
+        }
+
+        /// <summary>
+        /// Statistics cover one city session, so a newly loaded save must not inherit the
+        /// totals of the previous one.
+        /// </summary>
+        protected override void OnGameLoadingComplete(Purpose purpose, GameMode mode)
+        {
+            base.OnGameLoadingComplete(purpose, mode);
+            if (mode != GameMode.Game)
+            {
+                return;
+            }
+
+            DiscardPendingCounts();
+            ClearanceStats.ResetNow();
+        }
+
         protected override void OnUpdate()
         {
+            // The job from the previous update is long finished; this only makes queue access safe.
+            m_ClearedKindsHandle.Complete();
+            if (ClearanceStats.ConsumePendingReset())
+            {
+                DiscardPendingCounts();
+            }
+            else
+            {
+                while (m_ClearedKinds.TryDequeue(out int kind))
+                {
+                    ClearanceStats.Add(kind);
+                }
+            }
+
             Setting settings = Mod.Instance?.Settings;
             if (settings == null || !settings.Enabled)
             {
                 return;
             }
 
-            uint index = (m_SimulationSystem.frameIndex >> 2) % 16;
+            uint frameIndex = m_SimulationSystem.frameIndex;
+            if (!m_HasStartFrame)
+            {
+                m_StartFrame = frameIndex;
+                m_HasStartFrame = true;
+            }
+
+            ClearanceStats.Publish(ElapsedInGameHours(m_StartFrame, frameIndex));
+
+            uint index = (frameIndex >> 2) % 16;
             m_ObjectQuery.ResetFilter();
             m_ObjectQuery.SetSharedComponentFilter(new UpdateFrame(index));
 
@@ -350,6 +529,7 @@ namespace JamThreshold
             {
                 m_ChainDepth = settings.ClampedChainDepth(),
                 m_MaxStuckSpeed = settings.ClampedMaxStuckSpeed(),
+                m_ClearedKinds = m_ClearedKinds.AsParallelWriter(),
                 m_EntityType = GetEntityTypeHandle(),
                 m_BlockerType = GetComponentTypeHandle<Blocker>(true),
                 m_GroupMemberType = GetComponentTypeHandle<GroupMember>(true),
@@ -357,6 +537,22 @@ namespace JamThreshold
                 m_RideNeederType = GetComponentTypeHandle<RideNeeder>(true),
                 m_TargetType = GetComponentTypeHandle<Target>(true),
                 m_CarType = GetComponentTypeHandle<Car>(true),
+                m_HumanType = GetComponentTypeHandle<Human>(true),
+                m_TrainType = GetComponentTypeHandle<Train>(true),
+                m_BicycleType = GetComponentTypeHandle<Bicycle>(true),
+                m_TaxiType = GetComponentTypeHandle<Taxi>(true),
+                m_PublicTransportType = GetComponentTypeHandle<PublicTransport>(true),
+                m_PassengerTransportType = GetComponentTypeHandle<PassengerTransport>(true),
+                m_DeliveryTruckType = GetComponentTypeHandle<DeliveryTruck>(true),
+                m_GarbageTruckType = GetComponentTypeHandle<GarbageTruck>(true),
+                m_FireEngineType = GetComponentTypeHandle<FireEngine>(true),
+                m_PoliceCarType = GetComponentTypeHandle<PoliceCar>(true),
+                m_PostVanType = GetComponentTypeHandle<PostVan>(true),
+                m_AmbulanceType = GetComponentTypeHandle<Ambulance>(true),
+                m_HearseType = GetComponentTypeHandle<Hearse>(true),
+                m_MaintenanceVehicleType = GetComponentTypeHandle<MaintenanceVehicle>(true),
+                m_CargoTransportType = GetComponentTypeHandle<CargoTransport>(true),
+                m_PersonalCarType = GetComponentTypeHandle<PersonalCar>(true),
                 m_BlockerData = GetComponentLookup<Blocker>(true),
                 m_ControllerData = GetComponentLookup<Controller>(true),
                 m_ParkedCarData = GetComponentLookup<ParkedCar>(true),
@@ -368,6 +564,31 @@ namespace JamThreshold
                 m_CarCurrentLaneData = GetComponentLookup<CarCurrentLane>(false),
             };
             Dependency = jobData.ScheduleParallel(m_ObjectQuery, Dependency);
+            m_ClearedKindsHandle = Dependency;
+        }
+
+        // Drops counts the job already queued and restarts the in-game-hour window.
+        private void DiscardPendingCounts()
+        {
+            m_ClearedKindsHandle.Complete();
+            if (m_ClearedKinds.IsCreated)
+            {
+                m_ClearedKinds.Clear();
+            }
+
+            m_HasStartFrame = false;
+        }
+
+        // TimeSystem.kTicksPerDay simulation frames are one in-game day. Pausing stops frameIndex,
+        // so this measures in-game time rather than wall-clock time.
+        private static double ElapsedInGameHours(uint startFrame, uint frameIndex)
+        {
+            if (frameIndex <= startFrame)
+            {
+                return 0.0;
+            }
+
+            return (frameIndex - startFrame) * 24.0 / TimeSystem.kTicksPerDay;
         }
     }
 }

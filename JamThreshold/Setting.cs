@@ -6,18 +6,19 @@ namespace JamThreshold
 
     /// <summary>
     /// Options page: enable the replacement stuck-check, set chain depth and raw
-    /// speed threshold, or hand ownership back to vanilla <c>StuckMovingObjectSystem</c>.
-    /// This is not a city-wide traffic reset.
+    /// speed threshold, read the session statistics, or hand ownership back to vanilla
+    /// <c>StuckMovingObjectSystem</c>. This is not a city-wide traffic reset.
     /// </summary>
     // Saved as Mods_JamThreshold.coc under the game's userdata root (same [FileLocation] pattern as Reset Traffic).
     [FileLocation("Mods_JamThreshold")]
-    [SettingsUIGroupOrder(kToggleGroup, kThresholdGroup, kVanillaGroup)]
-    [SettingsUIShowGroupName(kToggleGroup, kThresholdGroup, kVanillaGroup)]
+    [SettingsUIGroupOrder(kToggleGroup, kThresholdGroup, kStatsGroup, kVanillaGroup)]
+    [SettingsUIShowGroupName(kToggleGroup, kThresholdGroup, kStatsGroup, kVanillaGroup)]
     public class Setting : ModSetting
     {
         public const string kSection = "Main";
         public const string kToggleGroup = "Toggle";
         public const string kThresholdGroup = "Thresholds";
+        public const string kStatsGroup = "Statistics";
         public const string kVanillaGroup = "Vanilla";
 
         public const int DefaultChainDepth = 40;
@@ -62,6 +63,40 @@ namespace JamThreshold
         public int MaxStuckSpeed { get; set; }
 
         /// <summary>
+        /// Objects flagged stuck this session. A plain string (not MultilineText, not disabled)
+        /// so Options actually shows the getter value; getter-only keeps it out of the .coc.
+        /// </summary>
+        [SettingsUISection(kSection, kStatsGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        public string ClearedText => ClearanceStats.FormatCleared();
+
+        /// <summary>Those objects per in-game hour, not per real-time hour.</summary>
+        [SettingsUISection(kSection, kStatsGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        public string RateText => ClearanceStats.FormatRate();
+
+        /// <summary>The same total split by object class. Classes with zero stay listed.</summary>
+        [SettingsUISection(kSection, kStatsGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        public string BreakdownText => ClearanceStats.FormatBreakdown();
+
+        /// <summary>
+        /// Options button. Zeroes the counters and restarts the in-game-hour window.
+        /// Does not touch thresholds and does not despawn traffic.
+        /// </summary>
+        [SettingsUISection(kSection, kStatsGroup)]
+        [SettingsUIButton]
+        [SettingsUIConfirmation]
+        public bool ResetStats
+        {
+            set
+            {
+                ClearanceStats.RequestReset();
+                Mod.Instance?.Logger?.Info("Statistics reset; counting restarts from zero.");
+            }
+        }
+
+        /// <summary>
         /// Options button. Re-enables vanilla <c>StuckMovingObjectSystem</c> and disables
         /// the replacement. Does not despawn traffic.
         /// </summary>
@@ -81,6 +116,12 @@ namespace JamThreshold
         }
 
         public bool IsVanillaActive => !Enabled;
+
+        /// <summary>Bumped by <see cref="ClearanceStats"/> so Options rebinds the statistics lines.</summary>
+        public int GetStatsVersion()
+        {
+            return ClearanceStats.UiVersion;
+        }
 
         public override void SetDefaults()
         {
