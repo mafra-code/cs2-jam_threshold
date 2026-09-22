@@ -101,7 +101,34 @@ namespace JamThreshold
             public ComponentTypeHandle<MaintenanceVehicle> m_MaintenanceVehicleType;
 
             [ReadOnly]
+            public ComponentTypeHandle<RoadMaintenanceVehicle> m_RoadMaintenanceVehicleType;
+
+            [ReadOnly]
+            public ComponentTypeHandle<ParkMaintenanceVehicle> m_ParkMaintenanceVehicleType;
+
+            [ReadOnly]
             public ComponentTypeHandle<CargoTransport> m_CargoTransportType;
+
+            [ReadOnly]
+            public ComponentTypeHandle<GoodsDeliveryVehicle> m_GoodsDeliveryVehicleType;
+
+            [ReadOnly]
+            public ComponentTypeHandle<PrisonerTransport> m_PrisonerTransportType;
+
+            [ReadOnly]
+            public ComponentTypeHandle<EvacuatingTransport> m_EvacuatingTransportType;
+
+            [ReadOnly]
+            public ComponentTypeHandle<Airplane> m_AirplaneType;
+
+            [ReadOnly]
+            public ComponentTypeHandle<Helicopter> m_HelicopterType;
+
+            [ReadOnly]
+            public ComponentTypeHandle<Aircraft> m_AircraftType;
+
+            [ReadOnly]
+            public ComponentTypeHandle<Watercraft> m_WatercraftType;
 
             [ReadOnly]
             public ComponentTypeHandle<PersonalCar> m_PersonalCarType;
@@ -259,6 +286,7 @@ namespace JamThreshold
             /// Picks the <see cref="ClearedKind"/> slot for a whole chunk - entities in one chunk
             /// share an archetype, so this costs one pass instead of one test per entity.
             /// Returns -1 for riders, which are counted through the vehicle carrying them.
+            /// First match wins, specific service and vehicle roles before the generic car slot.
             /// </summary>
             private int ClassifyChunk(in ArchetypeChunk chunk, bool isCar)
             {
@@ -269,6 +297,16 @@ namespace JamThreshold
 
                 if (chunk.Has(ref m_TrainType))
                 {
+                    if (chunk.Has(ref m_PublicTransportType))
+                    {
+                        return (int)ClearedKind.PassengerTrain;
+                    }
+
+                    if (chunk.Has(ref m_CargoTransportType))
+                    {
+                        return (int)ClearedKind.CargoTrain;
+                    }
+
                     return (int)ClearedKind.Train;
                 }
 
@@ -277,24 +315,99 @@ namespace JamThreshold
                     return (int)ClearedKind.Bicycle;
                 }
 
-                if (chunk.Has(ref m_TaxiType)
-                    || chunk.Has(ref m_PublicTransportType)
-                    || chunk.Has(ref m_PassengerTransportType))
+                if (chunk.Has(ref m_AirplaneType))
                 {
-                    return (int)ClearedKind.Transit;
+                    return (int)ClearedKind.Airplane;
                 }
 
-                if (chunk.Has(ref m_DeliveryTruckType)
-                    || chunk.Has(ref m_GarbageTruckType)
-                    || chunk.Has(ref m_FireEngineType)
-                    || chunk.Has(ref m_PoliceCarType)
-                    || chunk.Has(ref m_PostVanType)
-                    || chunk.Has(ref m_AmbulanceType)
-                    || chunk.Has(ref m_HearseType)
-                    || chunk.Has(ref m_MaintenanceVehicleType)
-                    || chunk.Has(ref m_CargoTransportType))
+                if (chunk.Has(ref m_HelicopterType))
                 {
-                    return (int)ClearedKind.Truck;
+                    return (int)ClearedKind.Helicopter;
+                }
+
+                if (chunk.Has(ref m_AircraftType))
+                {
+                    return (int)ClearedKind.Aircraft;
+                }
+
+                if (chunk.Has(ref m_WatercraftType))
+                {
+                    return (int)ClearedKind.Watercraft;
+                }
+
+                if (chunk.Has(ref m_PrisonerTransportType))
+                {
+                    return (int)ClearedKind.PrisonerTransport;
+                }
+
+                if (chunk.Has(ref m_EvacuatingTransportType))
+                {
+                    return (int)ClearedKind.Evacuation;
+                }
+
+                if (chunk.Has(ref m_TaxiType))
+                {
+                    return (int)ClearedKind.Taxi;
+                }
+
+                if (chunk.Has(ref m_GarbageTruckType))
+                {
+                    return (int)ClearedKind.GarbageTruck;
+                }
+
+                if (chunk.Has(ref m_DeliveryTruckType) || chunk.Has(ref m_GoodsDeliveryVehicleType))
+                {
+                    return (int)ClearedKind.DeliveryTruck;
+                }
+
+                if (chunk.Has(ref m_FireEngineType))
+                {
+                    return (int)ClearedKind.FireEngine;
+                }
+
+                if (chunk.Has(ref m_PoliceCarType))
+                {
+                    return (int)ClearedKind.PoliceCar;
+                }
+
+                if (chunk.Has(ref m_PostVanType))
+                {
+                    return (int)ClearedKind.PostVan;
+                }
+
+                if (chunk.Has(ref m_AmbulanceType))
+                {
+                    return (int)ClearedKind.Ambulance;
+                }
+
+                if (chunk.Has(ref m_HearseType))
+                {
+                    return (int)ClearedKind.Hearse;
+                }
+
+                if (chunk.Has(ref m_RoadMaintenanceVehicleType))
+                {
+                    return (int)ClearedKind.RoadMaintenance;
+                }
+
+                if (chunk.Has(ref m_ParkMaintenanceVehicleType))
+                {
+                    return (int)ClearedKind.ParkMaintenance;
+                }
+
+                if (chunk.Has(ref m_MaintenanceVehicleType))
+                {
+                    return (int)ClearedKind.Maintenance;
+                }
+
+                if (chunk.Has(ref m_CargoTransportType))
+                {
+                    return (int)ClearedKind.CargoTruck;
+                }
+
+                if (chunk.Has(ref m_PublicTransportType) || chunk.Has(ref m_PassengerTransportType))
+                {
+                    return (int)ClearedKind.Transit;
                 }
 
                 if (chunk.Has(ref m_PersonalCarType) || isCar)
@@ -302,7 +415,7 @@ namespace JamThreshold
                     return (int)ClearedKind.Car;
                 }
 
-                // Aircraft, watercraft, animals, and anything else with a Blocker.
+                // Animals and anything else with a Blocker.
                 return (int)ClearedKind.Other;
             }
 
@@ -551,7 +664,16 @@ namespace JamThreshold
                 m_AmbulanceType = GetComponentTypeHandle<Ambulance>(true),
                 m_HearseType = GetComponentTypeHandle<Hearse>(true),
                 m_MaintenanceVehicleType = GetComponentTypeHandle<MaintenanceVehicle>(true),
+                m_RoadMaintenanceVehicleType = GetComponentTypeHandle<RoadMaintenanceVehicle>(true),
+                m_ParkMaintenanceVehicleType = GetComponentTypeHandle<ParkMaintenanceVehicle>(true),
                 m_CargoTransportType = GetComponentTypeHandle<CargoTransport>(true),
+                m_GoodsDeliveryVehicleType = GetComponentTypeHandle<GoodsDeliveryVehicle>(true),
+                m_PrisonerTransportType = GetComponentTypeHandle<PrisonerTransport>(true),
+                m_EvacuatingTransportType = GetComponentTypeHandle<EvacuatingTransport>(true),
+                m_AirplaneType = GetComponentTypeHandle<Airplane>(true),
+                m_HelicopterType = GetComponentTypeHandle<Helicopter>(true),
+                m_AircraftType = GetComponentTypeHandle<Aircraft>(true),
+                m_WatercraftType = GetComponentTypeHandle<Watercraft>(true),
                 m_PersonalCarType = GetComponentTypeHandle<PersonalCar>(true),
                 m_BlockerData = GetComponentLookup<Blocker>(true),
                 m_ControllerData = GetComponentLookup<Controller>(true),

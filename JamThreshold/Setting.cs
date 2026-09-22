@@ -75,10 +75,190 @@ namespace JamThreshold
         [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
         public string RateText => ClearanceStats.FormatRate();
 
-        /// <summary>The same total split by object class. Classes with zero stay listed.</summary>
+        // One row per subtype. Hidden while the count is zero so a fresh city is not a wall of zeros.
+        // Getter-only, same as the totals, so none of these are written to Mods_JamThreshold.coc.
+
         [SettingsUISection(kSection, kStatsGroup)]
         [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
-        public string BreakdownText => ClearanceStats.FormatBreakdown();
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HideCar))]
+        public string CarText => ClearanceStats.FormatCount(ClearedKind.Car);
+
+        public bool HideCar => ClearanceStats.IsZero(ClearedKind.Car);
+
+        [SettingsUISection(kSection, kStatsGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HideDeliveryTruck))]
+        public string DeliveryTruckText => ClearanceStats.FormatCount(ClearedKind.DeliveryTruck);
+
+        public bool HideDeliveryTruck => ClearanceStats.IsZero(ClearedKind.DeliveryTruck);
+
+        [SettingsUISection(kSection, kStatsGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HideGarbageTruck))]
+        public string GarbageTruckText => ClearanceStats.FormatCount(ClearedKind.GarbageTruck);
+
+        public bool HideGarbageTruck => ClearanceStats.IsZero(ClearedKind.GarbageTruck);
+
+        [SettingsUISection(kSection, kStatsGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HideCargoTruck))]
+        public string CargoTruckText => ClearanceStats.FormatCount(ClearedKind.CargoTruck);
+
+        public bool HideCargoTruck => ClearanceStats.IsZero(ClearedKind.CargoTruck);
+
+        [SettingsUISection(kSection, kStatsGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HideRoadMaintenance))]
+        public string RoadMaintenanceText => ClearanceStats.FormatCount(ClearedKind.RoadMaintenance);
+
+        public bool HideRoadMaintenance => ClearanceStats.IsZero(ClearedKind.RoadMaintenance);
+
+        [SettingsUISection(kSection, kStatsGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HideParkMaintenance))]
+        public string ParkMaintenanceText => ClearanceStats.FormatCount(ClearedKind.ParkMaintenance);
+
+        public bool HideParkMaintenance => ClearanceStats.IsZero(ClearedKind.ParkMaintenance);
+
+        [SettingsUISection(kSection, kStatsGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HideMaintenance))]
+        public string MaintenanceText => ClearanceStats.FormatCount(ClearedKind.Maintenance);
+
+        public bool HideMaintenance => ClearanceStats.IsZero(ClearedKind.Maintenance);
+
+        [SettingsUISection(kSection, kStatsGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HideFireEngine))]
+        public string FireEngineText => ClearanceStats.FormatCount(ClearedKind.FireEngine);
+
+        public bool HideFireEngine => ClearanceStats.IsZero(ClearedKind.FireEngine);
+
+        [SettingsUISection(kSection, kStatsGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HidePoliceCar))]
+        public string PoliceCarText => ClearanceStats.FormatCount(ClearedKind.PoliceCar);
+
+        public bool HidePoliceCar => ClearanceStats.IsZero(ClearedKind.PoliceCar);
+
+        [SettingsUISection(kSection, kStatsGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HidePostVan))]
+        public string PostVanText => ClearanceStats.FormatCount(ClearedKind.PostVan);
+
+        public bool HidePostVan => ClearanceStats.IsZero(ClearedKind.PostVan);
+
+        [SettingsUISection(kSection, kStatsGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HideAmbulance))]
+        public string AmbulanceText => ClearanceStats.FormatCount(ClearedKind.Ambulance);
+
+        public bool HideAmbulance => ClearanceStats.IsZero(ClearedKind.Ambulance);
+
+        [SettingsUISection(kSection, kStatsGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HideHearse))]
+        public string HearseText => ClearanceStats.FormatCount(ClearedKind.Hearse);
+
+        public bool HideHearse => ClearanceStats.IsZero(ClearedKind.Hearse);
+
+        [SettingsUISection(kSection, kStatsGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HidePrisonerTransport))]
+        public string PrisonerTransportText => ClearanceStats.FormatCount(ClearedKind.PrisonerTransport);
+
+        public bool HidePrisonerTransport => ClearanceStats.IsZero(ClearedKind.PrisonerTransport);
+
+        [SettingsUISection(kSection, kStatsGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HideEvacuation))]
+        public string EvacuationText => ClearanceStats.FormatCount(ClearedKind.Evacuation);
+
+        public bool HideEvacuation => ClearanceStats.IsZero(ClearedKind.Evacuation);
+
+        [SettingsUISection(kSection, kStatsGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HideTaxi))]
+        public string TaxiText => ClearanceStats.FormatCount(ClearedKind.Taxi);
+
+        public bool HideTaxi => ClearanceStats.IsZero(ClearedKind.Taxi);
+
+        [SettingsUISection(kSection, kStatsGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HideTransit))]
+        public string TransitText => ClearanceStats.FormatCount(ClearedKind.Transit);
+
+        public bool HideTransit => ClearanceStats.IsZero(ClearedKind.Transit);
+
+        [SettingsUISection(kSection, kStatsGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HidePassengerTrain))]
+        public string PassengerTrainText => ClearanceStats.FormatCount(ClearedKind.PassengerTrain);
+
+        public bool HidePassengerTrain => ClearanceStats.IsZero(ClearedKind.PassengerTrain);
+
+        [SettingsUISection(kSection, kStatsGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HideCargoTrain))]
+        public string CargoTrainText => ClearanceStats.FormatCount(ClearedKind.CargoTrain);
+
+        public bool HideCargoTrain => ClearanceStats.IsZero(ClearedKind.CargoTrain);
+
+        [SettingsUISection(kSection, kStatsGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HideTrain))]
+        public string TrainText => ClearanceStats.FormatCount(ClearedKind.Train);
+
+        public bool HideTrain => ClearanceStats.IsZero(ClearedKind.Train);
+
+        [SettingsUISection(kSection, kStatsGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HideAirplane))]
+        public string AirplaneText => ClearanceStats.FormatCount(ClearedKind.Airplane);
+
+        public bool HideAirplane => ClearanceStats.IsZero(ClearedKind.Airplane);
+
+        [SettingsUISection(kSection, kStatsGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HideHelicopter))]
+        public string HelicopterText => ClearanceStats.FormatCount(ClearedKind.Helicopter);
+
+        public bool HideHelicopter => ClearanceStats.IsZero(ClearedKind.Helicopter);
+
+        [SettingsUISection(kSection, kStatsGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HideAircraft))]
+        public string AircraftText => ClearanceStats.FormatCount(ClearedKind.Aircraft);
+
+        public bool HideAircraft => ClearanceStats.IsZero(ClearedKind.Aircraft);
+
+        [SettingsUISection(kSection, kStatsGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HideWatercraft))]
+        public string WatercraftText => ClearanceStats.FormatCount(ClearedKind.Watercraft);
+
+        public bool HideWatercraft => ClearanceStats.IsZero(ClearedKind.Watercraft);
+
+        [SettingsUISection(kSection, kStatsGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HideBicycle))]
+        public string BicycleText => ClearanceStats.FormatCount(ClearedKind.Bicycle);
+
+        public bool HideBicycle => ClearanceStats.IsZero(ClearedKind.Bicycle);
+
+        [SettingsUISection(kSection, kStatsGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HidePedestrian))]
+        public string PedestrianText => ClearanceStats.FormatCount(ClearedKind.Pedestrian);
+
+        public bool HidePedestrian => ClearanceStats.IsZero(ClearedKind.Pedestrian);
+
+        [SettingsUISection(kSection, kStatsGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HideOther))]
+        public string OtherText => ClearanceStats.FormatCount(ClearedKind.Other);
+
+        public bool HideOther => ClearanceStats.IsZero(ClearedKind.Other);
 
         /// <summary>
         /// Options button. Zeroes the counters and restarts the in-game-hour window.

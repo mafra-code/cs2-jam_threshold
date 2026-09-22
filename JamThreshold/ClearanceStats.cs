@@ -4,18 +4,37 @@ namespace JamThreshold
     using Game.SceneFlow;
 
     /// <summary>
-    /// Exclusive object classes for the Options breakdown. Values double as slot indices,
-    /// so the order here is the order of the counter slots and of the breakdown line.
+    /// Exclusive object classes for the Options rows. Values double as slot indices,
+    /// so the order here is the order of the counter slots and of the statistics rows.
     /// </summary>
     internal enum ClearedKind
     {
         Car = 0,
-        Truck = 1,
-        Train = 2,
-        Transit = 3,
-        Bicycle = 4,
-        Pedestrian = 5,
-        Other = 6,
+        DeliveryTruck = 1,
+        GarbageTruck = 2,
+        CargoTruck = 3,
+        RoadMaintenance = 4,
+        ParkMaintenance = 5,
+        Maintenance = 6,
+        FireEngine = 7,
+        PoliceCar = 8,
+        PostVan = 9,
+        Ambulance = 10,
+        Hearse = 11,
+        PrisonerTransport = 12,
+        Evacuation = 13,
+        Taxi = 14,
+        Transit = 15,
+        PassengerTrain = 16,
+        CargoTrain = 17,
+        Train = 18,
+        Airplane = 19,
+        Helicopter = 20,
+        Aircraft = 21,
+        Watercraft = 22,
+        Bicycle = 23,
+        Pedestrian = 24,
+        Other = 25,
     }
 
     /// <summary>
@@ -26,13 +45,12 @@ namespace JamThreshold
     /// </summary>
     internal static class ClearanceStats
     {
-        internal const int KindCount = 7;
+        internal const int KindCount = (int)ClearedKind.Other + 1;
 
         // Player-visible value strings. The unit words live in the locale text, not in C#.
         internal const string ClearedId = "JamThreshold.Stats.Cleared";
         internal const string RateId = "JamThreshold.Stats.Rate";
         internal const string RateUnknownId = "JamThreshold.Stats.RateUnknown";
-        internal const string BreakdownId = "JamThreshold.Stats.Breakdown";
 
         // Below this the sample is too short for an honest per-hour figure.
         private const double MinHoursForRate = 0.05;
@@ -138,23 +156,16 @@ namespace JamThreshold
                 .Replace("{RATE}", rate.ToString());
         }
 
-        internal static string FormatBreakdown()
-        {
-            return TryLocalize(
-                    BreakdownId,
-                    "Cars {CARS}  ·  Trucks {TRUCKS}  ·  Trains {TRAINS}  ·  Transit {TRANSIT}  ·  Bicycles {BICYCLES}  ·  Pedestrians {PEDESTRIANS}  ·  Other {OTHER}")
-                .Replace("{CARS}", Count(ClearedKind.Car))
-                .Replace("{TRUCKS}", Count(ClearedKind.Truck))
-                .Replace("{TRAINS}", Count(ClearedKind.Train))
-                .Replace("{TRANSIT}", Count(ClearedKind.Transit))
-                .Replace("{BICYCLES}", Count(ClearedKind.Bicycle))
-                .Replace("{PEDESTRIANS}", Count(ClearedKind.Pedestrian))
-                .Replace("{OTHER}", Count(ClearedKind.Other));
-        }
-
-        private static string Count(ClearedKind kind)
+        /// <summary>The count for one Options row. Digits only; the label lives on the setting.</summary>
+        internal static string FormatCount(ClearedKind kind)
         {
             return s_Counts[(int)kind].ToString();
+        }
+
+        /// <summary>True while that row should stay off the Options page.</summary>
+        internal static bool IsZero(ClearedKind kind)
+        {
+            return s_Counts[(int)kind] == 0;
         }
 
         // Objects per in-game hour, or -1 while the elapsed time is too short to divide by.
