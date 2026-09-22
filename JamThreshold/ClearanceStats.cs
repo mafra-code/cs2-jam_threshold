@@ -50,12 +50,14 @@ namespace JamThreshold
         // Player-visible value strings. The unit words live in the locale text, not in C#.
         internal const string ClearedId = "JamThreshold.Stats.Cleared";
         internal const string RateId = "JamThreshold.Stats.Rate";
+        internal const string KindRateId = "JamThreshold.Stats.KindRate";
         internal const string RateUnknownId = "JamThreshold.Stats.RateUnknown";
 
         // Below this the sample is too short for an honest per-hour figure.
         private const double MinHoursForRate = 0.05;
 
         private static readonly int[] s_Counts = new int[KindCount];
+        private static readonly int[] s_PublishedKindRates = new int[KindCount];
 
         private static int s_Total;
         private static double s_ElapsedHours;
@@ -68,6 +70,9 @@ namespace JamThreshold
 
         /// <summary>Options reads this via SettingsUIValueVersion so the statistics lines rebind.</summary>
         internal static int UiVersion { get; private set; }
+
+        /// <summary>Session total for debug logs.</summary>
+        internal static int Total => s_Total;
 
         /// <summary>Records one newly flagged object. Out-of-range kinds fall back to Other.</summary>
         internal static void Add(int kind)
@@ -83,19 +88,37 @@ namespace JamThreshold
 
         /// <summary>
         /// Stores the elapsed in-game hours and bumps the UI version only when the displayed
-        /// total or the rounded rate actually changed, so Options does not rebind every tick.
+        /// total or a rounded rate actually changed, so Options does not rebind every tick.
         /// </summary>
         internal static void Publish(double elapsedHours)
         {
             s_ElapsedHours = elapsedHours;
             int rate = CurrentRate();
-            if (s_Total == s_PublishedTotal && rate == s_PublishedRate)
+            bool changed = s_Total != s_PublishedTotal || rate != s_PublishedRate;
+            if (!changed)
+            {
+                for (int i = 0; i < KindCount; i++)
+                {
+                    if (CurrentKindRate(i) != s_PublishedKindRates[i])
+                    {
+                        changed = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!changed)
             {
                 return;
             }
 
             s_PublishedTotal = s_Total;
             s_PublishedRate = rate;
+            for (int i = 0; i < KindCount; i++)
+            {
+                s_PublishedKindRates[i] = CurrentKindRate(i);
+            }
+
             UiVersion++;
         }
 
@@ -115,6 +138,7 @@ namespace JamThreshold
             for (int i = 0; i < KindCount; i++)
             {
                 s_Counts[i] = 0;
+                s_PublishedKindRates[i] = -1;
             }
 
             s_Total = 0;
@@ -156,6 +180,19 @@ namespace JamThreshold
                 .Replace("{RATE}", rate.ToString());
         }
 
+        /// <summary>One subtype per in-game hour. Digits and unit live in the locale template.</summary>
+        internal static string FormatKindRate(ClearedKind kind)
+        {
+            int rate = CurrentKindRate((int)kind);
+            if (rate < 0)
+            {
+                return TryLocalize(RateUnknownId, "—");
+            }
+
+            return TryLocalize(KindRateId, "~{RATE} / in-game hour")
+                .Replace("{RATE}", rate.ToString());
+        }
+
         /// <summary>The count for one Options row. Digits only; the label lives on the setting.</summary>
         internal static string FormatCount(ClearedKind kind)
         {
@@ -171,12 +208,22 @@ namespace JamThreshold
         // Objects per in-game hour, or -1 while the elapsed time is too short to divide by.
         private static int CurrentRate()
         {
+            return RateFromCount(s_Total);
+        }
+
+        private static int CurrentKindRate(int kind)
+        {
+            return RateFromCount(s_Counts[kind]);
+        }
+
+        private static int RateFromCount(int count)
+        {
             if (s_ElapsedHours < MinHoursForRate)
             {
                 return -1;
             }
 
-            return (int)Math.Round(s_Total / s_ElapsedHours);
+            return (int)Math.Round(count / s_ElapsedHours);
         }
 
         private static string TryLocalize(string id, string fallback)

@@ -1,5 +1,6 @@
 namespace JamThreshold
 {
+    using System.Text;
     using Colossal.Serialization.Entities;
     using Game;
     using Game.Common;
@@ -521,6 +522,11 @@ namespace JamThreshold
 
         private bool m_HasStartFrame;
 
+        // Reused by debug logs so OnUpdate does not allocate a new increment array each tick.
+        private int[] m_DebugIncrements;
+
+        private int m_LastIdleLogFrame = -1;
+
         /// <summary>
         /// Exclusive ownership of stuck-check: at most one of vanilla or this replacement is on.
         /// Never disables vanilla unless this system already exists.
@@ -564,6 +570,7 @@ namespace JamThreshold
         {
             base.OnCreate();
             m_ClearedKinds = new NativeQueue<int>(Allocator.Persistent);
+            m_DebugIncrements = new int[ClearanceStats.KindCount];
             m_SimulationSystem = World.GetOrCreateSystemManaged<SimulationSystem>();
             m_ObjectQuery = GetEntityQuery(
                 ComponentType.ReadOnly<Blocker>(),
@@ -601,25 +608,48 @@ namespace JamThreshold
 
             DiscardPendingCounts();
             ClearanceStats.ResetNow();
+            DebugLog("City loaded; statistics reset for the new session.");
         }
 
         protected override void OnUpdate()
         {
             // The job from the previous update is long finished; this only makes queue access safe.
             m_ClearedKindsHandle.Complete();
+            Setting settings = Mod.Instance?.Settings;
+            bool debug = settings != null && settings.EnableDebugging;
+            int flagged = 0;
+            if (debug)
+            {
+                for (int i = 0; i < ClearanceStats.KindCount; i++)
+                {
+                    m_DebugIncrements[i] = 0;
+                }
+            }
+
             if (ClearanceStats.ConsumePendingReset())
             {
                 DiscardPendingCounts();
+                DebugLog("Statistics reset; pending job counts discarded.");
             }
             else
             {
                 while (m_ClearedKinds.TryDequeue(out int kind))
                 {
                     ClearanceStats.Add(kind);
+                    flagged++;
+                    if (debug)
+                    {
+                        int slot = kind;
+                        if (slot < 0 || slot >= ClearanceStats.KindCount)
+                        {
+                            slot = (int)ClearedKind.Other;
+                        }
+
+                        m_DebugIncrements[slot]++;
+                    }
                 }
             }
 
-            Setting settings = Mod.Instance?.Settings;
             if (settings == null || !settings.Enabled)
             {
                 return;
@@ -632,7 +662,19 @@ namespace JamThreshold
                 m_HasStartFrame = true;
             }
 
-            ClearanceStats.Publish(ElapsedInGameHours(m_StartFrame, frameIndex));
+            double hours = ElapsedInGameHours(m_StartFrame, frameIndex);
+            ClearanceStats.Publish(hours);
+            if (debug)
+            {
+                if (flagged > 0)
+                {
+                    DebugLog(FormatFlaggedDebug(flagged, settings, hours));
+                }
+                else
+                {
+                    DebugLogIdle(settings, frameIndex, hours);
+                }
+            }
 
             uint index = (frameIndex >> 2) % 16;
             m_ObjectQuery.ResetFilter();
@@ -711,6 +753,55 @@ namespace JamThreshold
             }
 
             return (frameIndex - startFrame) * 24.0 / TimeSystem.kTicksPerDay;
+        }
+
+        private static void DebugLog(string message)
+        {
+            Setting settings = Mod.Instance?.Settings;
+            if (settings == null || !settings.EnableDebugging)
+            {
+                return;
+            }
+
+            Mod.Instance.Logger?.Info("[DEBUG] " + message);
+        }
+
+        private void DebugLogIdle(Setting settings, uint frameIndex, double hours)
+        {
+            int frame = UnityEngine.Time.frameCount;
+            if (m_LastIdleLogFrame >= 0 && frame - m_LastIdleLogFrame < 60)
+            {
+                return;
+            }
+
+            m_LastIdleLogFrame = frame;
+            DebugLog("OnUpdate idle: frame=" + frameIndex
+                + " chain=" + settings.ClampedChainDepth()
+                + " speed=" + settings.ClampedMaxStuckSpeed()
+                + " total=" + ClearanceStats.Total
+                + " hours=" + hours.ToString("0.00"));
+        }
+
+        private string FormatFlaggedDebug(int flagged, Setting settings, double hours)
+        {
+            StringBuilder text = new StringBuilder(128);
+            text.Append("flagged=").Append(flagged);
+            for (int i = 0; i < ClearanceStats.KindCount; i++)
+            {
+                int n = m_DebugIncrements[i];
+                if (n <= 0)
+                {
+                    continue;
+                }
+
+                text.Append(' ').Append((ClearedKind)i).Append('=').Append(n);
+            }
+
+            text.Append(" total=").Append(ClearanceStats.Total);
+            text.Append(" chain=").Append(settings.ClampedChainDepth());
+            text.Append(" speed=").Append(settings.ClampedMaxStuckSpeed());
+            text.Append(" hours=").Append(hours.ToString("0.00"));
+            return text.ToString();
         }
     }
 }

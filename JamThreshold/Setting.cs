@@ -6,20 +6,23 @@ namespace JamThreshold
 
     /// <summary>
     /// Options page: enable the replacement stuck-check, set chain depth and raw
-    /// speed threshold, read the session statistics, or hand ownership back to vanilla
-    /// <c>StuckMovingObjectSystem</c>. This is not a city-wide traffic reset.
+    /// speed threshold, read the session statistics and rates, turn on debug logs,
+    /// or hand ownership back to vanilla <c>StuckMovingObjectSystem</c>.
+    /// This is not a city-wide traffic reset.
     /// </summary>
     // Saved as Mods_JamThreshold.coc under the game's userdata root (same [FileLocation] pattern as Reset Traffic).
     [FileLocation("Mods_JamThreshold")]
-    [SettingsUIGroupOrder(kToggleGroup, kThresholdGroup, kStatsGroup, kVanillaGroup)]
-    [SettingsUIShowGroupName(kToggleGroup, kThresholdGroup, kStatsGroup, kVanillaGroup)]
+    [SettingsUIGroupOrder(kToggleGroup, kThresholdGroup, kStatsGroup, kRateGroup, kVanillaGroup, kDebugGroup)]
+    [SettingsUIShowGroupName(kToggleGroup, kThresholdGroup, kStatsGroup, kRateGroup, kVanillaGroup, kDebugGroup)]
     public class Setting : ModSetting
     {
         public const string kSection = "Main";
         public const string kToggleGroup = "Toggle";
         public const string kThresholdGroup = "Thresholds";
         public const string kStatsGroup = "Statistics";
+        public const string kRateGroup = "Rate";
         public const string kVanillaGroup = "Vanilla";
+        public const string kDebugGroup = "Debug";
 
         public const int DefaultChainDepth = 40;
         public const int VanillaChainDepth = 100;
@@ -69,11 +72,6 @@ namespace JamThreshold
         [SettingsUISection(kSection, kStatsGroup)]
         [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
         public string ClearedText => ClearanceStats.FormatCleared();
-
-        /// <summary>Those objects per in-game hour, not per real-time hour.</summary>
-        [SettingsUISection(kSection, kStatsGroup)]
-        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
-        public string RateText => ClearanceStats.FormatRate();
 
         // One row per subtype. Hidden while the count is zero so a fresh city is not a wall of zeros.
         // Getter-only, same as the totals, so none of these are written to Mods_JamThreshold.coc.
@@ -260,11 +258,146 @@ namespace JamThreshold
 
         public bool HideOther => ClearanceStats.IsZero(ClearedKind.Other);
 
+        /// <summary>Those objects per in-game hour, not per real-time hour.</summary>
+        [SettingsUISection(kSection, kRateGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        public string RateText => ClearanceStats.FormatRate();
+
+        [SettingsUISection(kSection, kRateGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HideCar))]
+        public string CarRateText => ClearanceStats.FormatKindRate(ClearedKind.Car);
+
+        [SettingsUISection(kSection, kRateGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HideDeliveryTruck))]
+        public string DeliveryTruckRateText => ClearanceStats.FormatKindRate(ClearedKind.DeliveryTruck);
+
+        [SettingsUISection(kSection, kRateGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HideGarbageTruck))]
+        public string GarbageTruckRateText => ClearanceStats.FormatKindRate(ClearedKind.GarbageTruck);
+
+        [SettingsUISection(kSection, kRateGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HideCargoTruck))]
+        public string CargoTruckRateText => ClearanceStats.FormatKindRate(ClearedKind.CargoTruck);
+
+        [SettingsUISection(kSection, kRateGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HideRoadMaintenance))]
+        public string RoadMaintenanceRateText => ClearanceStats.FormatKindRate(ClearedKind.RoadMaintenance);
+
+        [SettingsUISection(kSection, kRateGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HideParkMaintenance))]
+        public string ParkMaintenanceRateText => ClearanceStats.FormatKindRate(ClearedKind.ParkMaintenance);
+
+        [SettingsUISection(kSection, kRateGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HideMaintenance))]
+        public string MaintenanceRateText => ClearanceStats.FormatKindRate(ClearedKind.Maintenance);
+
+        [SettingsUISection(kSection, kRateGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HideFireEngine))]
+        public string FireEngineRateText => ClearanceStats.FormatKindRate(ClearedKind.FireEngine);
+
+        [SettingsUISection(kSection, kRateGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HidePoliceCar))]
+        public string PoliceCarRateText => ClearanceStats.FormatKindRate(ClearedKind.PoliceCar);
+
+        [SettingsUISection(kSection, kRateGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HidePostVan))]
+        public string PostVanRateText => ClearanceStats.FormatKindRate(ClearedKind.PostVan);
+
+        [SettingsUISection(kSection, kRateGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HideAmbulance))]
+        public string AmbulanceRateText => ClearanceStats.FormatKindRate(ClearedKind.Ambulance);
+
+        [SettingsUISection(kSection, kRateGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HideHearse))]
+        public string HearseRateText => ClearanceStats.FormatKindRate(ClearedKind.Hearse);
+
+        [SettingsUISection(kSection, kRateGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HidePrisonerTransport))]
+        public string PrisonerTransportRateText => ClearanceStats.FormatKindRate(ClearedKind.PrisonerTransport);
+
+        [SettingsUISection(kSection, kRateGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HideEvacuation))]
+        public string EvacuationRateText => ClearanceStats.FormatKindRate(ClearedKind.Evacuation);
+
+        [SettingsUISection(kSection, kRateGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HideTaxi))]
+        public string TaxiRateText => ClearanceStats.FormatKindRate(ClearedKind.Taxi);
+
+        [SettingsUISection(kSection, kRateGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HideTransit))]
+        public string TransitRateText => ClearanceStats.FormatKindRate(ClearedKind.Transit);
+
+        [SettingsUISection(kSection, kRateGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HidePassengerTrain))]
+        public string PassengerTrainRateText => ClearanceStats.FormatKindRate(ClearedKind.PassengerTrain);
+
+        [SettingsUISection(kSection, kRateGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HideCargoTrain))]
+        public string CargoTrainRateText => ClearanceStats.FormatKindRate(ClearedKind.CargoTrain);
+
+        [SettingsUISection(kSection, kRateGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HideTrain))]
+        public string TrainRateText => ClearanceStats.FormatKindRate(ClearedKind.Train);
+
+        [SettingsUISection(kSection, kRateGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HideAirplane))]
+        public string AirplaneRateText => ClearanceStats.FormatKindRate(ClearedKind.Airplane);
+
+        [SettingsUISection(kSection, kRateGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HideHelicopter))]
+        public string HelicopterRateText => ClearanceStats.FormatKindRate(ClearedKind.Helicopter);
+
+        [SettingsUISection(kSection, kRateGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HideAircraft))]
+        public string AircraftRateText => ClearanceStats.FormatKindRate(ClearedKind.Aircraft);
+
+        [SettingsUISection(kSection, kRateGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HideWatercraft))]
+        public string WatercraftRateText => ClearanceStats.FormatKindRate(ClearedKind.Watercraft);
+
+        [SettingsUISection(kSection, kRateGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HideBicycle))]
+        public string BicycleRateText => ClearanceStats.FormatKindRate(ClearedKind.Bicycle);
+
+        [SettingsUISection(kSection, kRateGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HidePedestrian))]
+        public string PedestrianRateText => ClearanceStats.FormatKindRate(ClearedKind.Pedestrian);
+
+        [SettingsUISection(kSection, kRateGroup)]
+        [SettingsUIValueVersion(typeof(Setting), nameof(GetStatsVersion))]
+        [SettingsUIHideByCondition(typeof(Setting), nameof(HideOther))]
+        public string OtherRateText => ClearanceStats.FormatKindRate(ClearedKind.Other);
+
         /// <summary>
         /// Options button. Zeroes the counters and restarts the in-game-hour window.
         /// Does not touch thresholds and does not despawn traffic.
         /// </summary>
-        [SettingsUISection(kSection, kStatsGroup)]
+        [SettingsUISection(kSection, kRateGroup)]
         [SettingsUIButton]
         [SettingsUIConfirmation]
         public bool ResetStats
@@ -295,6 +428,11 @@ namespace JamThreshold
             }
         }
 
+        /// <summary>Verbose <c>[DEBUG]</c> lines in the mod log. Hits FPS; leave off unless diagnosing.</summary>
+        [SettingsUISection(kSection, kDebugGroup)]
+        [SettingsUISetter(typeof(Setting), nameof(OnDebuggingChanged))]
+        public bool EnableDebugging { get; set; }
+
         public bool IsVanillaActive => !Enabled;
 
         /// <summary>Bumped by <see cref="ClearanceStats"/> so Options rebinds the statistics lines.</summary>
@@ -308,6 +446,7 @@ namespace JamThreshold
             Enabled = true;
             ChainDepth = DefaultChainDepth;
             MaxStuckSpeed = DefaultMaxStuckSpeed;
+            EnableDebugging = false;
         }
 
         public void OnEnabledChanged(bool value)
@@ -316,6 +455,13 @@ namespace JamThreshold
             Mod.Instance?.Logger?.Info(value
                 ? "Replacement stuck-check ON (vanilla StuckMovingObjectSystem disabled)."
                 : "Replacement stuck-check OFF (vanilla StuckMovingObjectSystem re-enabled).");
+        }
+
+        public void OnDebuggingChanged(bool value)
+        {
+            Mod.Instance?.Logger?.Info(value
+                ? "Debugging ON. Verbose stuck-check logs are enabled and will slow the game. See Mods_JamThreshold.log."
+                : "Debugging OFF. Stuck-check logs back to normal.");
         }
 
         // Clamp because Mods_JamThreshold.coc can be edited by hand outside the slider range.
