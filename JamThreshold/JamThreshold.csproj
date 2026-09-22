@@ -4,11 +4,11 @@
     <OutputType>Library</OutputType>
     <Configurations>Debug;Release</Configurations>
     <LangVersion>9</LangVersion>
-    <Version>0.0.4</Version>
+    <Version>1.0.0</Version>
     <!-- AssemblyVersion/FileVersion are 4-part numeric fields; they cannot carry a prerelease suffix. -->
-    <AssemblyVersion>0.0.4.0</AssemblyVersion>
-    <FileVersion>0.0.4.0</FileVersion>
-    <InformationalVersion>0.0.4</InformationalVersion>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <InformationalVersion>1.0.0</InformationalVersion>
     <RootNamespace>JamThreshold</RootNamespace>
     <AssemblyName>JamThreshold</AssemblyName>
     <Title>Jam Threshold</Title>
