@@ -4,7 +4,7 @@ namespace JamThreshold
     using Colossal;
 
     /// <summary>
-    /// German Options strings. Keys match <see cref="LocaleEN"/> so both languages bind to the
+    /// German Options strings. Keys match <see cref="LocaleEN"/> so all languages bind to the
     /// same <see cref="Setting"/> properties.
     /// </summary>
     public class LocaleDE : IDictionarySource
